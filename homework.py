@@ -1,16 +1,29 @@
-...
+import json
+import logging
+import os
+import requests
+import time
+
+from telegram import Bot
+from pprint import pprint
+from dotenv import load_dotenv
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s, %(levelname)s, %(message)s',
+    filename='program.log'
+    )
 
 load_dotenv()
 
 
-PRACTICUM_TOKEN = ...
-TELEGRAM_TOKEN = ...
-TELEGRAM_CHAT_ID = ...
+PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
-
 
 HOMEWORK_STATUSES = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
@@ -19,65 +32,81 @@ HOMEWORK_STATUSES = {
 }
 
 
-def send_message(bot, message):
-    ...
+def send_message(message):
+    bot = Bot(token=TELEGRAM_TOKEN)
+    return bot.send_message(TELEGRAM_CHAT_ID, message)
 
 
 def get_api_answer(current_timestamp):
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
-
-    ...
+    try:
+        response = requests.get(ENDPOINT, headers=HEADERS, params=params)
+    except requests.exceptions.RequestException as error:
+        logging.error(f'Эндпоинт недоступен. Сервер вернул ошибку: {error}')
+        send_message(f'Эндпоинт недоступен. Сервер вернул ошибку: {error}')
+    try:
+        return response.json()
+    except json.JSONDecodeError:
+        logging.error('Сервер вернул невалидный ответ')
+        send_message('Сервер вернул невалидный ответ')
 
 
 def check_response(response):
-
-    ...
+    try:
+        homework = response['homeworks']
+    except KeyError as error:
+        logging.error(f'Ошибка доступа по ключу homeworks: {error}')
+    if not isinstance(homework, list):
+        logging.error('Homeworks не в виде списка')
+    return homework
 
 
 def parse_status(homework):
-    homework_name = ...
-    homework_status = ...
-
-    ...
-
-    verdict = ...
-
-    ...
-
+    try:
+        homework_name = homework['homework_name']
+    except KeyError:
+        logging.error('Неверный ответ сервера')
+    homework_status = homework.get('status')
+    verdict = ''
+    if ((homework_status is None) or (
+        homework_status == '')) or ((
+            homework_status != 'approved') and (
+            homework_status != 'rejected')):
+        logging.error(f'Статус работы некорректен: {homework_status}')
+    if homework_status == 'rejected':
+        verdict = HOMEWORK_STATUSES['rejected']
+    elif homework_status == 'approved':
+        verdict = HOMEWORK_STATUSES['approved']
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def check_tokens():
-    ...
+    return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
 
 def main():
     """Основная логика работы бота."""
-
-    ...
-
-    bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    current_timestamp = int(time.time())
-
-    ...
-
+    logging.info('Запущен бот по проверке задания')
+    bot = Bot(token=TELEGRAM_TOKEN)
+    if not check_tokens():
+        logging.critical('Не все переменные окружения на месте')
+        raise Exception('Не все переменные окружения на месте')
+    current_timestamp = 1654402916
     while True:
         try:
-            response = ...
-
-            ...
-
-            current_timestamp = ...
+            all_homework = get_api_answer(current_timestamp)
+            if len(all_homework['homeworks']) > 0:
+                homework = check_response(all_homework)[0]
+                pprint(homework)
+                send_message(parse_status(homework))
+                logging.info('Сообщение отправлено')
             time.sleep(RETRY_TIME)
 
         except Exception as error:
-            message = f'Сбой в работе программы: {error}'
-            ...
+            logging.error(f'Сбой в работе программы: {error}')
+            send_message(f'Сбой в работе программы: {error}')
             time.sleep(RETRY_TIME)
-        else:
-            ...
-
 
 if __name__ == '__main__':
     main()
