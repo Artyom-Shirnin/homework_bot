@@ -46,8 +46,8 @@ def get_api_answer(current_timestamp):
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
     except requests.exceptions.RequestException as error:
-        logging.error(f'Эндпоинт недоступен. Сервер вернул ошибку: {error}')
-        send_message(bot, f'Эндпоинт недоступен. Сервер вернул ошибку: {error}')
+        logging.error(f'Эндпоинт недоступен.Ошибка от сервера: {error}')
+        send_message(bot, f'Эндпоинт недоступен. Ошибка от сервера: {error}')
     try:
         return response.json()
     except json.JSONDecodeError:
