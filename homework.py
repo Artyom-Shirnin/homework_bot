@@ -7,6 +7,7 @@ import time
 from telegram import Bot
 from pprint import pprint
 from dotenv import load_dotenv
+from typing import List
 
 logging.basicConfig(
     level=logging.INFO,
@@ -61,7 +62,7 @@ def check_response(response):
         homework = response['homeworks']
     except KeyError as error:
         logging.error(f'Ошибка доступа по ключу homeworks: {error}')
-    if not isinstance(homework, list):
+    if not isinstance(homework, List):
         logging.error('Homeworks не в виде списка')
     return homework
 
