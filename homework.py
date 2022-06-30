@@ -31,10 +31,11 @@ HOMEWORK_STATUSES = {
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
 
+bot = Bot(token=TELEGRAM_TOKEN)
 
-def send_message(message):
+
+def send_message(bot, message):
     """Отправка сообщения в Telegram чат."""
-    bot = Bot(token=TELEGRAM_TOKEN)
     return bot.send_message(TELEGRAM_CHAT_ID, message)
 
 
@@ -46,12 +47,12 @@ def get_api_answer(current_timestamp):
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
     except requests.exceptions.RequestException as error:
         logging.error(f'Эндпоинт недоступен. Сервер вернул ошибку: {error}')
-        send_message(f'Эндпоинт недоступен. Сервер вернул ошибку: {error}')
+        send_message(bot, f'Эндпоинт недоступен. Сервер вернул ошибку: {error}')
     try:
         return response.json()
     except json.JSONDecodeError:
         logging.error('Сервер вернул невалидный ответ')
-        send_message('Сервер вернул невалидный ответ')
+        send_message(bot, 'Сервер вернул невалидный ответ')
 
 
 def check_response(response):
@@ -103,13 +104,13 @@ def main():
             if len(all_homework['homeworks']) > 0:
                 homework = check_response(all_homework)[0]
                 pprint(homework)
-                send_message(parse_status(homework))
+                send_message(bot, parse_status(homework))
                 logging.info('Сообщение отправлено')
             time.sleep(RETRY_TIME)
 
         except Exception as error:
             logging.error(f'Сбой в работе программы: {error}')
-            send_message(f'Сбой в работе программы: {error}')
+            send_message(bot, f'Сбой в работе программы: {error}')
             time.sleep(RETRY_TIME)
 
 
