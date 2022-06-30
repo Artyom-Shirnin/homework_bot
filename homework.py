@@ -12,7 +12,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s, %(levelname)s, %(message)s',
     filename='program.log'
-    )
+)
 
 load_dotenv()
 
@@ -33,11 +33,13 @@ HOMEWORK_STATUSES = {
 
 
 def send_message(message):
+    """Отправка сообщения в Telegram чат."""
     bot = Bot(token=TELEGRAM_TOKEN)
     return bot.send_message(TELEGRAM_CHAT_ID, message)
 
 
 def get_api_answer(current_timestamp):
+    """Запрос к эндпоинту API-сервиса."""
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     try:
@@ -53,6 +55,7 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
+    """Проверка ответа API на корректность."""
     try:
         homework = response['homeworks']
     except KeyError as error:
@@ -63,6 +66,7 @@ def check_response(response):
 
 
 def parse_status(homework):
+    """Извлечение статуса работы."""
     try:
         homework_name = homework['homework_name']
     except KeyError:
@@ -82,13 +86,13 @@ def parse_status(homework):
 
 
 def check_tokens():
+    """Проверка доступности переменных окружения."""
     return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
 
 def main():
     """Основная логика работы бота."""
     logging.info('Запущен бот по проверке задания')
-    bot = Bot(token=TELEGRAM_TOKEN)
     if not check_tokens():
         logging.critical('Не все переменные окружения на месте')
         raise Exception('Не все переменные окружения на месте')
@@ -107,6 +111,7 @@ def main():
             logging.error(f'Сбой в работе программы: {error}')
             send_message(f'Сбой в работе программы: {error}')
             time.sleep(RETRY_TIME)
+
 
 if __name__ == '__main__':
     main()
