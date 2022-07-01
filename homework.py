@@ -44,7 +44,9 @@ def get_api_answer(current_timestamp):
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
         if response.status_code != 200:
             logging.error(f'Код ответа не 200: {response.status_code}')
-            raise requests.exceptions.RequestException(f'Код ответа не 200: {response.status_cod}')
+            raise requests.exceptions.RequestException(
+                f'Код ответа не 200: {response.status_cod}'
+            )
     except requests.exceptions.RequestException as error:
         logging.error(f'Эндпоинт недоступен.Ошибка от сервера: {error}')
         send_message(f'Эндпоинт недоступен. Ошибка от сервера: {error}')
