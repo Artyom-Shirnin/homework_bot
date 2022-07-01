@@ -5,9 +5,7 @@ import requests
 import time
 
 from telegram import Bot
-from pprint import pprint
 from dotenv import load_dotenv
-from typing import List
 
 logging.basicConfig(
     level=logging.INFO,
@@ -32,8 +30,6 @@ HOMEWORK_STATUSES = {
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
 
-bot = Bot(token=TELEGRAM_TOKEN)
-
 
 def send_message(bot, message):
     """Отправка сообщения в Telegram чат."""
@@ -46,14 +42,17 @@ def get_api_answer(current_timestamp):
     params = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
+        if response.status_code != 200:
+            logging.error(f'Код ответа не 200: {response.status_code}')
+            raise requests.exceptions.RequestException(f'Код ответа не 200: {response.status_cod}')
     except requests.exceptions.RequestException as error:
         logging.error(f'Эндпоинт недоступен.Ошибка от сервера: {error}')
-        send_message(bot, f'Эндпоинт недоступен. Ошибка от сервера: {error}')
+        send_message(f'Эндпоинт недоступен. Ошибка от сервера: {error}')
     try:
         return response.json()
     except json.JSONDecodeError:
         logging.error('Сервер вернул невалидный ответ')
-        send_message(bot, 'Сервер вернул невалидный ответ')
+        send_message('Сервер вернул невалидный ответ')
 
 
 def check_response(response):
@@ -62,8 +61,9 @@ def check_response(response):
         homework = response['homeworks']
     except KeyError as error:
         logging.error(f'Ошибка доступа по ключу homeworks: {error}')
-    if not isinstance(homework, List):
+    if not isinstance(homework, list):
         logging.error('Homeworks не в виде списка')
+        raise TypeError('Homeworks не в виде списка')
     return homework
 
 
@@ -80,6 +80,7 @@ def parse_status(homework):
             homework_status != 'approved') and (
             homework_status != 'rejected')):
         logging.error(f'Статус работы некорректен: {homework_status}')
+        raise KeyError('Homeworks не в виде списка')
     if homework_status == 'rejected':
         verdict = HOMEWORK_STATUSES['rejected']
     elif homework_status == 'approved':
@@ -94,6 +95,7 @@ def check_tokens():
 
 def main():
     """Основная логика работы бота."""
+    bot = Bot(token=TELEGRAM_TOKEN)
     logging.info('Запущен бот по проверке задания')
     if not check_tokens():
         logging.critical('Не все переменные окружения на месте')
@@ -104,7 +106,6 @@ def main():
             all_homework = get_api_answer(current_timestamp)
             if len(all_homework['homeworks']) > 0:
                 homework = check_response(all_homework)[0]
-                pprint(homework)
                 send_message(bot, parse_status(homework))
                 logging.info('Сообщение отправлено')
             time.sleep(RETRY_TIME)
