@@ -6,7 +6,6 @@ import requests
 import time
 
 from telegram import Bot
-from pprint import pprint
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -113,7 +112,6 @@ def main():
             all_homework = get_api_answer(current_timestamp)
             if len(all_homework['homeworks']) > 0:
                 homework = check_response(all_homework)[0]
-                pprint(homework)
                 homework_status = parse_status(homework)
                 if homework_status != old_homework_status:
                     old_homework_status = homework_status
