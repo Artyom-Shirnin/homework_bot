@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import requests
+import telegram
 import time
 
 from telegram import Bot
@@ -29,8 +30,10 @@ HOMEWORK_STATUSES = {
 def send_message(bot, message):
     """Отправка сообщения в Telegram чат."""
     try:
+        logging.debug('Попытка отправки сообщения в telegram')
         bot.send_message(TELEGRAM_CHAT_ID, message)
-    except Exception as error:
+        logging.debug('Отправка сообщения в telegram')
+    except telegram.error.TelegramError as error:
         logging.error(f'Не удалось отправить сообщение в telegram: {error}')
         raise Exception(error)
 
@@ -40,6 +43,7 @@ def get_api_answer(current_timestamp):
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     try:
+        logging.debug('Попытка отправки запроса к эндпоинту API-сервиса')
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
         logging.debug('Отправлен запрос к эндпоинту API-сервиса')
     except requests.ConnectionError:
@@ -105,7 +109,7 @@ def main():
     if not check_tokens():
         logging.critical('Не все переменные окружения на месте')
         raise Exception('Не все переменные окружения на месте')
-    current_timestamp = 1656675874
+    current_timestamp = 1656890433
     old_homework_status = ''
     while True:
         try:
