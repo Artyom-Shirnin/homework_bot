@@ -45,7 +45,7 @@ def get_api_answer(current_timestamp):
     except requests.ConnectionError:
         logging.error('Подключение к Интернету отсутствует')
         raise ConnectionError('Подключение к Интернету отсутствует')
-    except requests.exceptions.RequestException as error:
+    except Exception as error:
         logging.error(f'Эндпоинт недоступен.Ошибка от сервера: {error}')
         send_message(f'Эндпоинт недоступен. Ошибка от сервера: {error}')
     if response.status_code != HTTPStatus.OK:
