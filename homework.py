@@ -1,3 +1,4 @@
+from http import HTTPStatus
 import json
 import logging
 import os
@@ -5,13 +6,8 @@ import requests
 import time
 
 from telegram import Bot
+from pprint import pprint
 from dotenv import load_dotenv
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s, %(levelname)s, %(message)s',
-    filename='program.log'
-)
 
 load_dotenv()
 
@@ -20,7 +16,7 @@ PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-RETRY_TIME = 600
+RETRY_TIME = 10
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
@@ -33,7 +29,11 @@ HOMEWORK_STATUSES = {
 
 def send_message(bot, message):
     """Отправка сообщения в Telegram чат."""
-    return bot.send_message(TELEGRAM_CHAT_ID, message)
+    try:
+        bot.send_message(TELEGRAM_CHAT_ID, message)
+    except Exception as error:
+        logging.error(f'Не удалось отправить сообщение в telegram: {error}')
+        raise Exception(error)
 
 
 def get_api_answer(current_timestamp):
@@ -42,14 +42,18 @@ def get_api_answer(current_timestamp):
     params = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
-        if response.status_code != 200:
-            logging.error(f'Код ответа не 200: {response.status_code}')
-            raise requests.exceptions.RequestException(
-                f'Код ответа не 200: {response.status_cod}'
-            )
+        logging.debug('Отправлен запрос к эндпоинту API-сервиса')
+    except requests.ConnectionError:
+        logging.error('Подключение к Интернету отсутствует')
+        raise ConnectionError('Подключение к Интернету отсутствует')
     except requests.exceptions.RequestException as error:
         logging.error(f'Эндпоинт недоступен.Ошибка от сервера: {error}')
         send_message(f'Эндпоинт недоступен. Ошибка от сервера: {error}')
+    if response.status_code != HTTPStatus.OK:
+        logging.error(f'Код ответа не 200: {response.status_code}')
+        raise requests.exceptions.RequestException(
+            f'Код ответа не 200: {response.status_cod}'
+        )
     try:
         return response.json()
     except json.JSONDecodeError:
@@ -102,14 +106,21 @@ def main():
     if not check_tokens():
         logging.critical('Не все переменные окружения на месте')
         raise Exception('Не все переменные окружения на месте')
-    current_timestamp = 1654402916
+    current_timestamp = 1656675874
+    old_homework_status = ''
     while True:
         try:
             all_homework = get_api_answer(current_timestamp)
             if len(all_homework['homeworks']) > 0:
                 homework = check_response(all_homework)[0]
-                send_message(bot, parse_status(homework))
-                logging.info('Сообщение отправлено')
+                pprint(homework)
+                homework_status = parse_status(homework)
+                if homework_status != old_homework_status:
+                    old_homework_status = homework_status
+                    send_message(bot, homework_status)
+                    logging.info('Сообщение отправлено')
+                else:
+                    logging.debug('Статус не изменился')
             time.sleep(RETRY_TIME)
 
         except Exception as error:
@@ -119,4 +130,9 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s, %(levelname)s, %(message)s',
+    filename='program.log'
+)
     main()
